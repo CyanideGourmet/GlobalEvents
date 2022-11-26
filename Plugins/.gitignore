@@ -1,0 +1,8 @@
+# Ignore local plugins
+Developer/RiderLink/
+
+# Binary Files
+*/Binaries/*
+
+# Compiled source files for the engine to use
+*/Intermediate/*
