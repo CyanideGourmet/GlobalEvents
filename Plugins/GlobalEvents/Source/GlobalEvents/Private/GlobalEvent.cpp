@@ -3,6 +3,12 @@
 #include "GlobalEvent.h"
 
 #include "EventListener.h"
+#include "GlobalEventPayload.h"
+
+UGlobalEvent::UGlobalEvent()
+{
+	Payload = UGlobalEventPayload::StaticClass();
+}
 
 void UGlobalEvent::RegisterListener(UEventListener* Listener)
 {
@@ -18,6 +24,11 @@ void UGlobalEvent::UnregisterListener(UEventListener* Listener)
 	{
 		Listeners.Remove(Listener);
 	}
+}
+
+TSubclassOf<UGlobalEventPayload> UGlobalEvent::GetPayloadClass() const
+{
+	return Payload;
 }
 
 void UGlobalEvent::InvokeEvent()

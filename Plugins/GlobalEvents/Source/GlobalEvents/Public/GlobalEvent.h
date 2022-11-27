@@ -9,12 +9,17 @@
 #include "GlobalEvent.generated.h"
 
 class UEventListener;
+class UGlobalEventPayload;
 
 UCLASS(BlueprintType)
 class GLOBALEVENTS_API UGlobalEvent : public UObject
 {
 	GENERATED_BODY()
 
+public:
+	UGlobalEvent();
+	
+private:
 	UPROPERTY(VisibleAnywhere, Category = Events)
 	TArray<TObjectPtr<UEventListener>> Listeners;
 	
@@ -23,8 +28,14 @@ class GLOBALEVENTS_API UGlobalEvent : public UObject
 	
 	friend void UEventListener::RegisterEvent();
 	friend void UEventListener::UnregisterEvent();
+
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Events, meta=(AllowPrivateAccess="true"))
+	TSubclassOf<UGlobalEventPayload> Payload;
 	
 public:
+	TSubclassOf<UGlobalEventPayload> GetPayloadClass() const;
+	
 	UFUNCTION(BlueprintCallable, Category = Events)
 	void InvokeEvent();
 };
