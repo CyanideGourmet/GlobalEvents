@@ -5,10 +5,10 @@
 
 #include "GlobalEvent.h"
 
-void UGlobalEventFunctionLibrary::InvokeEvent(UGlobalEvent* Event)
+void UGlobalEventFunctionLibrary::InvokeEvent(UGlobalEvent* Event, UObject* Payload)
 {
 	if(Event)
 	{
-		Event->InvokeEvent();
+		Event->InvokeEvent(Payload);
 	}
 }

@@ -2,35 +2,63 @@
 
 #include "GlobalEvent.h"
 
-#include "EventListener.h"
+#include "GlobalEventListenerComponent.h"
+#include "GenericPlatform/GenericPlatformMemory.h"
+#include "GlobalEventPayload.h"
 
-void UGlobalEvent::RegisterListener(UEventListener* Listener)
+
+constexpr FLinearColor DefaultNodeColor{0.3960784314f, 0.f, 0.f, 1.f};
+
+constexpr int32        EventAssetPrefixNum = 2;
+constexpr const TCHAR* EventAssetPrefixes[EventAssetPrefixNum]{TEXT("EV_"), TEXT("EVT_")};
+
+UGlobalEvent::UGlobalEvent() : DefaultEventName(ConstructDefaultEventName(GetName()))
 {
-	if(Listener)
-	{
-		Listeners.AddUnique(Listener);
-	}
+	PayloadTemplate = UGlobalEventPayload::StaticClass();
+
+	bCustomizeNode = false;
+	ResetCustomization();
 }
 
-void UGlobalEvent::UnregisterListener(UEventListener* Listener)
+UClass* UGlobalEvent::GetPayloadTemplate() const
 {
-	if(Listener)
-	{
-		Listeners.Remove(Listener);
-	}
+	return PayloadTemplate;
 }
 
-void UGlobalEvent::InvokeEvent()
+const TArray<UGlobalEventListenerComponent*>& UGlobalEvent::GetListeners() const
 {
-	for (int32 ListenerID = Listeners.Num() - 1; ListenerID >= 0; --ListenerID)
-	{
-		const UEventListener* Listener = Listeners[ListenerID];
-		if(!Listener)
-		{
-			Listeners.RemoveAt(ListenerID);
-			continue;
-		}
+	return Listeners;
+}
 
-		Listener->OnEventInvoked.Broadcast();
-	}
+void UGlobalEvent::InvokeEvent(UObject* Payload)
+{
+	// Event invocation logic (UFunction::Invoke ???)
+}
+
+FString UGlobalEvent::GetEventName() const
+{
+	return (bCustomizeNode && !EventName.IsEmpty()) ? EventName : DefaultEventName;
+}
+
+#if WITH_EDITOR
+const FLinearColor& UGlobalEvent::GetNodeColor() const
+{
+	return bCustomizeNode ? NodeColor : DefaultNodeColor;
+}
+#endif
+
+FString UGlobalEvent::ConstructDefaultEventName(FString EventNameBase)
+{
+	// Remove predefined prefixes
+	for (int32 Pref = 0; Pref < EventAssetPrefixNum && EventNameBase.RemoveFromStart(EventAssetPrefixes[Pref]); ++Pref) {}
+	return FString::Printf(TEXT("On %s Invoked"), *EventNameBase);
+}
+
+void UGlobalEvent::ResetCustomization()
+{
+	EventName = ConstructDefaultEventName(GetName());
+
+#if WITH_EDITOR
+	NodeColor = DefaultNodeColor;
+#endif
 }
