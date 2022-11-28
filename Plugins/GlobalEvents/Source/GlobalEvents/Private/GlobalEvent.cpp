@@ -2,46 +2,62 @@
 
 #include "GlobalEvent.h"
 
-#include "EventListener.h"
+#include "GlobalEventListenerComponent.h"
+#include "GenericPlatform/GenericPlatformMemory.h"
 #include "GlobalEventPayload.h"
 
-UGlobalEvent::UGlobalEvent()
+constexpr FLinearColor DefaultNodeColor{0.3960784314f, 0.f, 0.f, 1.f};
+
+constexpr int32        EventAssetPrefixNum = 2;
+constexpr const TCHAR* EventAssetPrefixes[EventAssetPrefixNum]{TEXT("EV_"), TEXT("EVT_")};
+
+UGlobalEvent::UGlobalEvent() : DefaultEventName(ConstructDefaultEventName(GetName()))
 {
-	Payload = UGlobalEventPayload::StaticClass();
+	PayloadTemplate = UGlobalEventPayload::StaticClass();
+
+	bCustomizeNode = false;
+	ResetCustomization();
 }
 
-void UGlobalEvent::RegisterListener(UEventListener* Listener)
+UClass* UGlobalEvent::GetPayloadTemplate() const
 {
-	if(Listener)
-	{
-		Listeners.AddUnique(Listener);
-	}
+	return PayloadTemplate;
 }
 
-void UGlobalEvent::UnregisterListener(UEventListener* Listener)
+const TArray<UGlobalEventListenerComponent*>& UGlobalEvent::GetListeners() const
 {
-	if(Listener)
-	{
-		Listeners.Remove(Listener);
-	}
+	return Listeners;
 }
 
-TSubclassOf<UGlobalEventPayload> UGlobalEvent::GetPayloadClass() const
+void UGlobalEvent::InvokeEvent(UObject* Payload)
 {
-	return Payload;
+	// Event invocation logic (UFunction::Invoke ???)
 }
 
-void UGlobalEvent::InvokeEvent()
+FString UGlobalEvent::GetEventName() const
 {
-	for (int32 ListenerID = Listeners.Num() - 1; ListenerID >= 0; --ListenerID)
-	{
-		const UEventListener* Listener = Listeners[ListenerID];
-		if(!Listener)
-		{
-			Listeners.RemoveAt(ListenerID);
-			continue;
-		}
+	return (bCustomizeNode && !EventName.IsEmpty()) ? EventName : DefaultEventName;
+}
 
-		Listener->OnEventInvoked.Broadcast();
-	}
+#if WITH_EDITOR
+const FLinearColor& UGlobalEvent::GetNodeColor() const
+{
+	return bCustomizeNode ? NodeColor : DefaultNodeColor;
+}
+#endif
+
+FString UGlobalEvent::ConstructDefaultEventName(FString EventNameBase)
+{
+	// Remove predefined prefixes
+	for (int32 Pref = 0; Pref < EventAssetPrefixNum && EventNameBase.RemoveFromStart(EventAssetPrefixes[Pref]); ++Pref) {}
+	return FString::Printf(TEXT("On %s Invoked"), *EventNameBase);
+}
+
+void UGlobalEvent::ResetCustomization()
+{
+	EventName = ConstructDefaultEventName(GetName());
+
+#if WITH_EDITOR
+	NodeColor = DefaultNodeColor;
+#endif
 }
