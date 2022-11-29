@@ -9,23 +9,11 @@
 
 // Engine
 #include "EdGraphSchema_K2.h"
-#include "K2Node_FunctionEntry.h"
 #include "KismetCompiler.h"
+#include "Kismet2/BlueprintEditorUtils.h"
 
 
 #define LOCTEXT_NAMESPACE "K2Node_GlobalEvent"
-
-class FGlobalEventNodeHandler : public FNodeHandlingFunctor
-{
-public:
-	explicit FGlobalEventNodeHandler(FKismetCompilerContext& InCompilerContext)
-		: FNodeHandlingFunctor(InCompilerContext) {}
-
-	virtual void Compile(FKismetFunctionContext& Context, UEdGraphNode* Node) override
-	{
-		GenerateSimpleThenGoto(Context, *Node);
-	}
-};
 
 UK2Node_GlobalEvent::UK2Node_GlobalEvent()
 {
@@ -35,7 +23,7 @@ UK2Node_GlobalEvent::UK2Node_GlobalEvent()
 	NodeFlags     = Null;
 
 #if WITH_EDITOR
-	ReconstructingPropertyNames =
+	DirtyingPropertyNames =
 	{
 		GET_MEMBER_NAME_CHECKED(UK2Node_GlobalEvent, Event),
 		GET_MEMBER_NAME_CHECKED(UK2Node_GlobalEvent, NodeFlags),
@@ -48,23 +36,37 @@ void UK2Node_GlobalEvent::PostEditChangeProperty(FPropertyChangedEvent& Property
 {
 	if (PropertyChangedEvent.Property)
 	{
-		if (ReconstructingPropertyNames.Contains(PropertyChangedEvent.GetPropertyName()))
+		if (DirtyingPropertyNames.Contains(PropertyChangedEvent.GetPropertyName()))
 		{
+			GetGraph()->NotifyGraphChanged();
+			FBlueprintEditorUtils::MarkBlueprintAsModified(GetBlueprint());
+
 			ReconstructNode();
 		}
 	}
 
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
+
 #endif
+
+void UK2Node_GlobalEvent::PostLoadSubobjects(FObjectInstancingGraph* OuterInstanceGraph)
+{
+	UK2Node_EditablePinBase::PostLoadSubobjects(OuterInstanceGraph);
+
+	if(HasValidBlueprint())
+	{
+		// Cached Event object might still be loading on original reconstruct
+		ReconstructNode();
+	}
+}
 
 void UK2Node_GlobalEvent::AllocateDefaultPins()
 {
-	CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Delegate, UK2Node_Event::DelegateOutputName);
 	CreatePin(EGPD_Output, UEdGraphSchema_K2::PC_Exec, UEdGraphSchema_K2::PN_Then);
-	
 
-	if (Event && bPinInfoDirty)
+
+	if (!Event.IsNull() && bPinInfoDirty)
 	{
 		RefreshPinInfos();
 	}
@@ -76,7 +78,7 @@ FText UK2Node_GlobalEvent::GetNodeTitle(const ENodeTitleType::Type TitleType) co
 {
 	if (CachedTitle.IsOutOfDate(this) || CachedFullTitle.IsOutOfDate(this))
 	{
-		const FText EventName = FText::FromString(Event ? Event->GetEventName() : TEXT("On Global Event Invoked"));
+		const FText EventName = FText::FromString(Event.IsNull() ? TEXT("On Global Event Invoked") : Event.LoadSynchronous()->GetEventName());
 
 		FFormatNamedArguments Args;
 		Args.Add(TEXT("EventName"), EventName);
@@ -92,19 +94,9 @@ FLinearColor UK2Node_GlobalEvent::GetNodeTitleColor() const
 {
 	return
 #if WITH_EDITOR
-		Event ? Event->GetNodeColor() : Super::GetNodeTitleColor();
+		Event.IsNull() ? Super::GetNodeTitleColor() : Event.LoadSynchronous()->GetNodeHeaderColor();
 #else
 	Super::GetNodeTitleColor();
-#endif
-}
-
-FLinearColor UK2Node_GlobalEvent::GetNodeCommentColor() const
-{
-	return
-#if WITH_EDITOR
-		Event ? Event->GetNodeColor() : Super::GetNodeCommentColor();
-#else
-	Super::GetNodeCommentColor();
 #endif
 }
 
@@ -112,7 +104,7 @@ FLinearColor UK2Node_GlobalEvent::GetNodeBodyTintColor() const
 {
 	return
 #if WITH_EDITOR
-		Event ? Event->GetNodeColor() : Super::GetNodeBodyTintColor();
+		Event.IsNull() ? Super::GetNodeBodyTintColor() : Event.LoadSynchronous()->GetNodeBodyColor();
 #else
 	Super::GetNodeBodyTintColor();
 #endif
@@ -122,22 +114,20 @@ FText UK2Node_GlobalEvent::GetTooltipText() const
 {
 	if (CachedTooltip.IsOutOfDate(this))
 	{
-		if (Event)
+		if (Event.IsNull())
 		{
-			const UClass* PayloadTemplate = Event->GetPayloadTemplate();
-
-			FFormatNamedArguments Args;
-			Args.Add(TEXT("PayloadTemplate"), FText::FromString(PayloadTemplate ? PayloadTemplate->GetName() : UObject::StaticClass()->GetName()));
-
-			CachedTooltip.SetCachedText(
-				FText::Format(
-					LOCTEXT(LOCTEXT_NAMESPACE, "Responds to an Invoked Global Event.\nCan deliver Payload as object, polymorphic pins, both, or not at all.\nPayload Template: {PayloadTemplate}"),
-					Args),
-				this);
+			CachedTooltip.SetCachedText(FText::FromString(TEXT("Responds to an Invoked Global Event.\nCan deliver Payload as object, polymorphic pins, both, or not at all.")), this);
 		}
 		else
 		{
-			CachedTooltip.SetCachedText(FText::FromString(TEXT("Responds to an Invoked Global Event.\nCan deliver Payload as object, polymorphic pins, both, or not at all.")), this);
+			const UClass* PayloadTemplate = Event.LoadSynchronous()->GetPayloadTemplate();
+
+			FStringFormatNamedArguments Args;
+			Args.Add(TEXT("PayloadTemplate"), PayloadTemplate ? PayloadTemplate->GetName() : UObject::StaticClass()->GetName());
+
+			CachedTooltip.SetCachedText(
+				FText::FromString(FString::Format(Event.LoadSynchronous()->GetNodeDescription().GetCharArray().GetData(), Args)),
+				this);
 		}
 	}
 
@@ -161,7 +151,7 @@ void UK2Node_GlobalEvent::ReconstructNode()
 	CachedFullTitle.MarkDirty();
 	CachedTooltip.MarkDirty();
 
-	if (Event)
+	if (!Event.IsNull())
 	{
 		RefreshPinInfos();
 
@@ -177,6 +167,16 @@ void UK2Node_GlobalEvent::ReconstructNode()
 	}
 
 	Super::ReconstructNode();
+}
+
+bool UK2Node_GlobalEvent::ShouldShowNodeProperties() const
+{
+	return true;
+}
+
+bool UK2Node_GlobalEvent::NodeCausesStructuralBlueprintChange() const
+{
+	return true;
 }
 
 bool UK2Node_GlobalEvent::DrawNodeAsEntry() const
@@ -200,7 +200,7 @@ void UK2Node_GlobalEvent::ExpandNode(FKismetCompilerContext& CompilerContext, UE
 
 	auto* Schema = GetDefault<UEdGraphSchema_K2>();
 
-	if (!CheckForErrors() || !Event)
+	if (!CheckForErrors() || Event.IsNull())
 	{
 		BreakAllNodeLinks();
 		return;
@@ -208,50 +208,24 @@ void UK2Node_GlobalEvent::ExpandNode(FKismetCompilerContext& CompilerContext, UE
 
 
 	UK2Node_CustomEvent* CustomEvent = CompilerContext.SpawnIntermediateNode<UK2Node_CustomEvent>(this, SourceGraph);
-	CustomEvent->bOverrideFunction = false;
-	CustomEvent->bInternalEvent = true;
-	CustomEvent->CustomFunctionName = FName(Event->GetEventName());
-	CustomEvent->UserDefinedPins = UserDefinedPins;
+	CustomEvent->bCallInEditor       = false;
+	CustomEvent->bOverrideFunction   = false;
+	CustomEvent->bInternalEvent      = true;
+	CustomEvent->CustomFunctionName  = FName(Event.LoadSynchronous()->GetEventName());
+	CustomEvent->UserDefinedPins     = UserDefinedPins;
+	CustomEvent->FunctionFlags       = EFunctionFlags::FUNC_Event | EFunctionFlags::FUNC_Private;
+	CustomEvent->bIsEditable         = false;
 	CustomEvent->AllocateDefaultPins();
 
 	for (UEdGraphPin* Pin : CustomEvent->Pins)
 	{
-		if(UEdGraphPin* LocalPin = FindPin(Pin->GetFName()))
+		if (UEdGraphPin* LocalPin = FindPin(Pin->GetFName()))
 		{
-			Pin->MakeLinkTo(LocalPin);
+			CompilerContext.MovePinLinksToIntermediate(*LocalPin, *Pin);
 		}
 	}
-	
-	
-	/*if (!FunctionStubSubGraph && HasValidBlueprint())
-	{
-		UBlueprint* BP                       = GetBlueprint();
-		FunctionStubSubGraph                 = NewObject<UEdGraph>(this, FName(Event->GetEventName()));
-		FunctionStubSubGraph->Schema         = UEdGraphSchema_K2::StaticClass();
-		FunctionStubSubGraph->bAllowDeletion = false;
-		FunctionStubSubGraph->bAllowRenaming = false;
-		FunctionStubSubGraph->SetFlags(RF_Transient);
 
-		BP->EventGraphs.Add(FunctionStubSubGraph);
-		CompilerContext.MessageLog.NotifyIntermediateObjectCreation(FunctionStubSubGraph, this);
-	}
-
-	if (UK2Node_FunctionEntry* Entry = FindFunctionEntry())
-	{
-		if (!Entry)
-		{
-			Entry = CompilerContext.SpawnIntermediateNode<UK2Node_FunctionEntry>(this, FunctionStubSubGraph);
-			Entry->CustomGeneratedFunctionName = FName(Event->GetEventName());
-			Entry->UserDefinedPins = UserDefinedPins;
-			Entry->AllocateDefaultPins();
-		}
-		else
-		{
-			Entry->CustomGeneratedFunctionName = FName(Event->GetEventName());
-			Entry->UserDefinedPins = UserDefinedPins;
-			Entry->ReconstructNode();
-		}
-	}*/
+	BreakAllNodeLinks();
 }
 
 FNodeHandlingFunctor* UK2Node_GlobalEvent::CreateNodeHandler(FKismetCompilerContext& CompilerContext) const
@@ -261,7 +235,7 @@ FNodeHandlingFunctor* UK2Node_GlobalEvent::CreateNodeHandler(FKismetCompilerCont
 
 bool UK2Node_GlobalEvent::CanCreateUserDefinedPin(const FEdGraphPinType& InPinType, EEdGraphPinDirection InDesiredDirection, FText& OutErrorMessage)
 {
-	return Event != nullptr;
+	return !Event.IsNull();
 }
 
 UEdGraphPin* UK2Node_GlobalEvent::CreatePinFromUserDefinition(const TSharedPtr<FUserPinInfo> NewPinInfo)
@@ -293,15 +267,14 @@ void UK2Node_GlobalEvent::RefreshPinInfos()
 	PayloadPinInfo->PinType.PinSubCategoryObject = UObject::StaticClass();
 
 	PolymorphicPinInfos.Empty();
-	if (const UClass* PayloadTemplate = Event->GetPayloadTemplate(); PayloadTemplate && PayloadTemplate != UObject::StaticClass())
+	if (
+		const UClass* PayloadTemplate = Event.LoadSynchronous()->GetPayloadTemplate();
+		PayloadTemplate && PayloadTemplate != UObject::StaticClass())
 	{
 		TArray<FProperty*> Properties;
 		for (TFieldIterator<FProperty> It(PayloadTemplate); It; ++It)
 		{
-			if (It->PropertyFlags & (CPF_HasGetValueTypeHash | CPF_NativeAccessSpecifiers))
-			{
-				Properties.Add(*It);
-			}
+			Properties.Add(*It);
 		}
 
 		for (int32 PropId = Properties.Num() - 1; PropId >= 0; --PropId)
