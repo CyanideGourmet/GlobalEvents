@@ -23,8 +23,8 @@ class GLOBALEVENTSUNCOOKED_API UK2Node_GlobalEvent : public UK2Node_EditablePinB
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditDefaultsOnly)
-	TObjectPtr<UGlobalEvent> Event;
+	UPROPERTY(EditDefaultsOnly, Export)
+	TSoftObjectPtr<UGlobalEvent> Event;
 
 	UPROPERTY(EditDefaultsOnly, meta=(Bitmask, BitmaskEnum = "EGlobalEventNodeFlags"))
 	uint8 NodeFlags;
@@ -36,13 +36,13 @@ public:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
+	virtual void PostLoadSubobjects(FObjectInstancingGraph* OuterInstanceGraph) override;
 	/** UObject Interface */
 
 	/** UEdGraphNode Interface */
 	virtual void         AllocateDefaultPins() override;
 	virtual FText        GetNodeTitle(ENodeTitleType::Type TitleType) const override;
 	virtual FLinearColor GetNodeTitleColor() const override;
-	virtual FLinearColor GetNodeCommentColor() const override;
 	virtual FLinearColor GetNodeBodyTintColor() const override;
 	virtual FText        GetTooltipText() const override;
 	virtual FSlateIcon   GetIconAndTint(FLinearColor& OutColor) const override;
@@ -51,11 +51,13 @@ public:
 	/** ~UEdGraphNode Interface */
 
 	/** UK2Node Interface */
-	virtual bool  DrawNodeAsEntry() const override;
-	virtual FText GetMenuCategory() const override;
-	virtual void  GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
-	virtual void  ExpandNode(FKismetCompilerContext& CompilerContext, UEdGraph* SourceGraph) override;
+	virtual bool                  NodeCausesStructuralBlueprintChange() const override;
+	virtual bool                  DrawNodeAsEntry() const override;
+	virtual FText                 GetMenuCategory() const override;
+	virtual void                  GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar) const override;
+	virtual void                  ExpandNode(FKismetCompilerContext& CompilerContext, UEdGraph* SourceGraph) override;
 	virtual FNodeHandlingFunctor* CreateNodeHandler(FKismetCompilerContext& CompilerContext) const override;
+	virtual bool                  ShouldShowNodeProperties() const override;
 	/** ~UK2Node Interface */
 
 	/** UK2Node_EditablePinBase Interface */
@@ -66,7 +68,7 @@ public:
 	/** IK2Node_EventNodeInterface */
 	virtual TSharedPtr<FEdGraphSchemaAction> GetEventNodeAction(const FText& ActionCategory) override;
 	/** ~IK2Node_EventNodeInterface */
-	
+
 	virtual void RefreshPinInfos();
 
 protected:
@@ -84,6 +86,6 @@ protected:
 	TArray<TSharedPtr<FUserPinInfo>> PolymorphicPinInfos;
 
 #if WITH_EDITORONLY_DATA
-	TArray<FName> ReconstructingPropertyNames;
+	TArray<FName> DirtyingPropertyNames;
 #endif
 };
