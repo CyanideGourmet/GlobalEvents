@@ -38,6 +38,8 @@ public class GlobalEventsUncooked : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"UnrealEd",
+				"KismetCompiler",
 				"GlobalEvents"
 				// ... add private dependencies that you statically link with here ...	
 			}

@@ -4,6 +4,7 @@
 
 #include "BlueprintActionDatabaseRegistrar.h"
 #include "BlueprintNodeSpawner.h"
+#include "EdGraphSchema_K2_Actions.h"
 
 void FNodeUtils::GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistrar, UClass* ActionKey)
 {
@@ -14,4 +15,11 @@ void FNodeUtils::GetMenuActions(FBlueprintActionDatabaseRegistrar& ActionRegistr
 
 		ActionRegistrar.AddBlueprintAction(ActionKey, NodeSpawner);
 	}
+}
+
+TSharedPtr<FEdGraphSchemaAction> FNodeUtils::GetEventNodeAction(UK2Node* Node, const FText& ActionCategory)
+{
+	TSharedPtr<FEdGraphSchemaAction_K2Event> EventNodeAction = MakeShareable(new FEdGraphSchemaAction_K2Event(ActionCategory, Node->GetNodeTitle(ENodeTitleType::EditableTitle), Node->GetTooltipText(), 0));
+	EventNodeAction->NodeTemplate = Node;
+	return EventNodeAction;
 }
