@@ -31,7 +31,7 @@ protected:
 	 * Supplied class will be used as the template for exposed pins on the Event Node.
 	 * Can be left as null, Event Node allows for passing the entire payload object.
 	 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Events, meta=(GetByRef))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Events)
 	TSubclassOf<UObject> PayloadTemplate;
 
 public:
@@ -56,6 +56,27 @@ public:
 	UFUNCTION(BlueprintPure, BlueprintInternalUseOnly)
 	const TArray<UGlobalEventListenerComponent*>& GetListeners() const;
 
+protected:
+	/**
+	 * Used internally to fetch all relevant properties from the given function.
+	 * @param Func the Function that will be searched.
+	 * @param OutPayloadParam optional Payload out argument. Will contain the function's Payload property (if it has one).
+	 * @return The array of all normal function parameters (with CPF_Param).
+	 */
+	static TArray<FProperty*> GetFunctionParams(const UFunction* Func, FProperty** OutPayloadParam = nullptr);
+
+private:
+	/**
+	 * Used internally when no Payload is supplied.
+	 */
+	void InvokeNoPayload();
+
+	/**
+	 * Used internally when payload is supplied.
+	 */
+	void InvokeWithPayload(UObject* Payload);
+
+public:
 	/**
 	 * Invokes the Event, sending it to all registered Listeners.
 	 * Optionally a Payload with Event Data can be sent through and received by the Listener.
@@ -95,15 +116,31 @@ public:
 #if WITH_EDITORONLY_DATA
 
 protected:
-	/** The color this Event's Node will be displayed in. */
+	/** The color this Event Node's Header will be displayed in. */
 	UPROPERTY(EditDefaultsOnly, Category = "Events|Customization", meta=(EditCondition="bCustomizeNode", EditConditionHides))
-	FLinearColor NodeColor;
+	FLinearColor NodeHeaderColor;
+
+	/** The color this Event Node's Body will be displayed in. */
+	UPROPERTY(EditDefaultsOnly, Category = "Events|Customization", meta=(EditCondition="bCustomizeNode", EditConditionHides))
+	FLinearColor NodeBodyColor;
+
+	/** The color this Event Node's Comment will be displayed in. */
+	UPROPERTY(EditDefaultsOnly, Category = "Events|Customization", meta=(EditCondition="bCustomizeNode", EditConditionHides))
+	FLinearColor NodeCommentColor;
+
+	/** The custom Node Tooltip/Description used for this Event. */
+	UPROPERTY(EditDefaultsOnly, Category = "Events|Customization", meta=(EditCondition="bCustomizeNode", EditConditionHides))
+	FText NodeDescription;
+
 #endif
 
 #if WITH_EDITOR
 
 public:
-	const FLinearColor& GetNodeColor() const;
+	const FLinearColor& GetNodeHeaderColor() const;
+	const FLinearColor& GetNodeBodyColor() const;
+	const FLinearColor& GetNodeCommentColor() const;
+	FString             GetNodeDescription() const;
 #endif
 
 

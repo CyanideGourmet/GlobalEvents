@@ -46,13 +46,7 @@ void UGlobalEventListenerComponent::BeginPlay()
 	Super::BeginPlay();
 
 	// Cleanup possible nullptr values from editing in editor
-	for (int32 Index = Events.Num(); Index >= 0; --Index)
-	{
-		if(Events[Index] == nullptr)
-		{
-			Events.RemoveAt(Index);
-		}
-	}
+	Events.Remove(nullptr);
 
 	// Get rid of duplicates
 	Events = TSet<UGlobalEvent*>{Events}.Array();

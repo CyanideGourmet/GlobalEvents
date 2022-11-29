@@ -11,7 +11,7 @@
  * Using it is completely voluntary. Any UObject can be used instead.
  * The object properties can be exposed to the Event Node (through a setting on the node itself).
  */
-UCLASS(BlueprintType, Blueprintable, MinimalAPI)
+UCLASS(BlueprintType, Blueprintable, MinimalAPI, Transient)
 class UGlobalEventPayload : public UObject
 {
 	GENERATED_BODY()
