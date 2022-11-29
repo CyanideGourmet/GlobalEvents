@@ -6,8 +6,7 @@
 #include "GlobalEventPayload.h"
 
 constexpr FLinearColor DefaultNodeHeaderColor{0.3960784314f, 0.f, 0.f, 1.f};
-constexpr FLinearColor DefaultNodeBodyColor{0.15f, 0.15f, 0.15f, 1.f};
-constexpr FLinearColor DefaultNodeCommentColor(0.9f, 0.9f, 0.9f, 1.f);
+constexpr FLinearColor DefaultNodeBodyColor{0.937663f, 0.f, 0.979167f, 1.f};
 
 static FString DefaultNodeDescription{TEXT("Responds to an Invoked Global Event.\nCan deliver Payload as object, polymorphic pins, both, or not at all.\nPayload Template: {PayloadTemplate}")};
 
@@ -18,8 +17,6 @@ static FName PayloadPropertyName{TEXT("Payload")};
 
 UGlobalEvent::UGlobalEvent() : DefaultEventName(ConstructDefaultEventName(GetName()))
 {
-	PayloadTemplate = UGlobalEventPayload::StaticClass();
-
 	bCustomizeNode = false;
 	ResetCustomization();
 }
@@ -99,7 +96,7 @@ void UGlobalEvent::InvokeWithPayload(UObject* Payload)
 			continue;
 		}
 
-		FProperty*         PayloadParam;
+		FProperty*         PayloadParam = nullptr;
 		TArray<FProperty*> FunctionParamProperties = GetFunctionParams(EventFunction, &PayloadParam);
 
 		TArray<uint8> Params;
@@ -157,11 +154,6 @@ const FLinearColor& UGlobalEvent::GetNodeBodyColor() const
 	return bCustomizeNode ? NodeBodyColor : DefaultNodeBodyColor;
 }
 
-const FLinearColor& UGlobalEvent::GetNodeCommentColor() const
-{
-	return bCustomizeNode ? NodeCommentColor : DefaultNodeCommentColor;
-}
-
 FString UGlobalEvent::GetNodeDescription() const
 {
 	return bCustomizeNode ? (NodeDescription.IsEmpty() ? DefaultNodeDescription : NodeDescription.ToString()) : DefaultNodeDescription;
@@ -183,7 +175,6 @@ void UGlobalEvent::ResetCustomization()
 #if WITH_EDITOR
 	NodeHeaderColor = DefaultNodeHeaderColor;
 	NodeBodyColor = DefaultNodeBodyColor;
-	NodeCommentColor = DefaultNodeCommentColor;
 
 	NodeDescription = FText();
 #endif

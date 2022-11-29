@@ -32,7 +32,7 @@ protected:
 	 * Can be left as null, Event Node allows for passing the entire payload object.
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Events)
-	TSubclassOf<UObject> PayloadTemplate;
+	UClass* PayloadTemplate;
 
 public:
 	UClass* GetPayloadTemplate() const;
@@ -139,7 +139,6 @@ protected:
 public:
 	const FLinearColor& GetNodeHeaderColor() const;
 	const FLinearColor& GetNodeBodyColor() const;
-	const FLinearColor& GetNodeCommentColor() const;
 	FString             GetNodeDescription() const;
 #endif
 
