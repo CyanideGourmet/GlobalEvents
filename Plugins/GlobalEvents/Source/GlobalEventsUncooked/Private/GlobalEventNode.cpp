@@ -218,7 +218,7 @@ void UK2Node_GlobalEvent::ExpandNode(FKismetCompilerContext& CompilerContext, UE
 	{
 		if(UEdGraphPin* LocalPin = FindPin(Pin->GetFName()))
 		{
-			CompilerContext.MovePinLinksToIntermediate(*Pin, *LocalPin);
+			Pin->MakeLinkTo(LocalPin);
 		}
 	}
 	
